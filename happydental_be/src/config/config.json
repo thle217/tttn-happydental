@@ -1,0 +1,31 @@
+{
+  "development": {
+    "username": "root",
+    "password": null,
+    "database": "happydental_db",
+    "host": "127.0.0.1",
+    "dialect": "mysql",
+    "query": {
+      "raw": true
+    },
+    "timezone": "+07:00"
+  },
+  "test": {
+    "username": "root",
+    "password": null,
+    "database": "database_test",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "unbojslqvj0qucch",
+    "password": "GKHQDX8sE4saDtnpd5Or",
+    "database": "bojwinqbit5m6fovbnrl",
+    "host": "bojwinqbit5m6fovbnrl-mysql.services.clever-cloud.com",
+    "dialect": "mysql",
+    "query": {
+      "raw": true
+    },
+    "timezone": "+07:00"
+  }
+}
