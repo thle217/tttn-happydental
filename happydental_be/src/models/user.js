@@ -33,7 +33,8 @@ module.exports = (sequelize, DataTypes) => {
         city: DataTypes.STRING,
         email: DataTypes.STRING(100),
         password: DataTypes.STRING,
-        is_verified: DataTypes.BOOLEAN
+        is_verified: DataTypes.BOOLEAN,
+        refresh_token: DataTypes.STRING
     }, {
         sequelize,
         modelName: 'User',

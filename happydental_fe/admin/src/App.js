@@ -34,7 +34,7 @@ function App() {
                                     path={route.path}
                                     element={
                                         <MainLayout>
-                                            <Page accessToken={user.accessToken}/>
+                                            <Page accessToken={user.access_token}/>
                                         </MainLayout>
                                     }
                                     key={index}/>

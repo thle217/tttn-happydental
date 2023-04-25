@@ -1,13 +1,45 @@
 import { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
 import { Button, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faImage } from "@fortawesome/free-solid-svg-icons";
+import { setUserInfo } from "../../../slices/userSlice";
+import axios from "axios";
+import Cookies from "js-cookie";
+import jwt_decode from "jwt-decode";
 import toast from "react-hot-toast";
 import DataTable from "../../../components/DataTable";
 import customerAPI from "../../../services/customerAPI";
 
 export default function CustomerList({ accessToken }) {
+
+
+    //XỬ LÝ CONFIG AXIOS
+    const user = useSelector(state => state.user.user);
+    const axiosJWT = axios.create();
+    const dispatch = useDispatch();
+
+    axiosJWT.interceptors.request.use(async(config) => {
+        let date = new Date();
+        const decodedToken = jwt_decode(user.access_token);
+        if(decodedToken.exp < date.getTime() / 1000) {
+            const res = await axios(`${process.env.REACT_APP_API_URL}/api/auth/refresh-token`, {
+                method: "post",
+                withCredentials: true
+            });
+            Cookies.set("refreshToken", res.data.data.refresh_token);
+            const refreshUser = {
+                ...user,
+                access_token: res.data.data.access_token
+            };
+            dispatch(setUserInfo({user: refreshUser, login: true}));
+            config.headers["token"] = `Bearer ${res.data.data.access_token}`;
+        };
+        return config;
+    }, e => {
+        return Promise.reject(e);
+    });
 
 
     //KHAI BÁO BIẾN
@@ -20,7 +52,7 @@ export default function CustomerList({ accessToken }) {
     //XỬ LÝ LẤY TẤT CẢ KHÁCH HÀNG
     const getAllCustomers = async() => {
         setIsLoading(true);
-        const res = await customerAPI.getAll(accessToken);
+        const res = await customerAPI.getAll(accessToken, axiosJWT);
         setCustomerList(res.data.data);
         setIsLoading(false);
     };
@@ -117,7 +149,7 @@ export default function CustomerList({ accessToken }) {
 
     //XỬ LÝ XÓA KHÁCH HÀNG
     const handleDeleteCustomer = async(record) => {
-        const res = await customerAPI.delete(record.user_id, accessToken);
+        const res = await customerAPI.delete(record.user_id, accessToken, axiosJWT);
         if(res.data.errCode === 0) {
             toast.success("Xóa thành công");
             getAllCustomers();

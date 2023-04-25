@@ -1,8 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { Form, Input, DatePicker, Radio, Select, Button, Popconfirm, Spin } from "antd";
+import { setUserInfo } from "../../../slices/userSlice";
+import axios from "axios";
+import Cookies from "js-cookie";
+import jwt_decode from "jwt-decode";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -13,6 +18,33 @@ import imageAPI from "../../../services/imageAPI";
 import AnimatedPage from "../../../utils/AnimatedPage";
 
 export default function CustomerDetails({ accessToken }) {
+
+
+    //XỬ LÝ CONFIG AXIOS
+    const data = useSelector(state => state.user.user);
+    const axiosJWT = axios.create();
+    const dispatch = useDispatch();
+
+    axiosJWT.interceptors.request.use(async(config) => {
+        let date = new Date();
+        const decodedToken = jwt_decode(data.access_token);
+        if(decodedToken.exp < date.getTime() / 1000) {
+            const res = await axios(`${process.env.REACT_APP_API_URL}/api/auth/refresh-token`, {
+                method: "post",
+                withCredentials: true
+            });
+            Cookies.set("refreshToken", res.data.data.refresh_token);
+            const refreshUser = {
+                ...data,
+                access_token: res.data.data.access_token
+            };
+            dispatch(setUserInfo({user: refreshUser, login: true}));
+            config.headers["token"] = `Bearer ${res.data.data.access_token}`;
+        };
+        return config;
+    }, e => {
+        return Promise.reject(e);
+    });
 
 
     //STATE CHỨA ĐỊA CHỈ CHỌN TỪ SELECT
@@ -152,7 +184,7 @@ export default function CustomerDetails({ accessToken }) {
         };
 
         setIsLoading(true);
-        const res = await customerAPI.create(userInfo, accessToken);
+        const res = await customerAPI.create(userInfo, accessToken, axiosJWT);
         setIsLoading(false);
         if(res.data.errCode === 0) {
             toast.success("Thêm thành công");
@@ -197,7 +229,7 @@ export default function CustomerDetails({ accessToken }) {
         };
 
         setIsLoading(true);
-        const res = await customerAPI.update(userInfo, user.user_id, accessToken);
+        const res = await customerAPI.update(userInfo, user.user_id, accessToken, axiosJWT);
         setIsLoading(false);
         if(res.data.errCode === 0) {
             toast.success("Cập nhật thành công");

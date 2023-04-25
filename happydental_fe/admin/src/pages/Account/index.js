@@ -11,6 +11,7 @@ import Swal from "sweetalert2";
 import authAPI from "../../services/authAPI";
 import CommonUtils from "../../utils/commonUtils";
 import AnimatedPage from "../../utils/AnimatedPage";
+import Cookies from "js-cookie";
 
 export default function Account() {
 
@@ -51,6 +52,7 @@ export default function Account() {
 
     //XỬ LÝ ĐĂNG XUẤT
     const handleLogout = () => {
+        Cookies.remove("refreshToken");
         dispatch(setUserInfo({user: null, login: false}));
         navigate("/");
     };

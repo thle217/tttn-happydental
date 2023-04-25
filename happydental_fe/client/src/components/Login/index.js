@@ -4,6 +4,7 @@ import { Button, Modal, Form, Input, Alert, Spin } from "antd";
 import { setLoginOpen } from "../../slices/loginSlice";
 import { setRegisterOpen } from "../../slices/registerSlice";
 import { setUserInfo } from "../../slices/userSlice";
+import Cookies from "js-cookie";
 import toast from "react-hot-toast";
 import authAPI from "../../services/authAPI";
 
@@ -29,9 +30,11 @@ export default function Login() {
                 toast.error("Không đúng phân quyền");
             }
             else {
-                const action = setUserInfo({user: res.data.data, login: true});
+                const {refresh_token, ...data} = res.data.data;
+                const action = setUserInfo({user: data, login: true});
                 dispatch(action);
                 dispatch(setLoginOpen(false));
+                Cookies.set("customerRefreshToken", res.data.data.refresh_token);
             };
         }
         else if(res.data.errCode === 4) {

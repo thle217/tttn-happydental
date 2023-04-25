@@ -1,4 +1,4 @@
-import categoryServices from "../services/categoryServices";
+import categoryServices from "../services/category";
 
 
 //XỬ LÝ LẤY TẤT CẢ DANH MỤC DỊCH VỤ

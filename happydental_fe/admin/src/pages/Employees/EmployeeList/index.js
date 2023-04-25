@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { setUserInfo } from "../../../slices/userSlice";
 import { Link } from "react-router-dom";
 import { Button, Select } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,8 +9,38 @@ import toast from "react-hot-toast";
 import DataTable from "../../../components/DataTable";
 import employeeAPI from "../../../services/employeeAPI";
 import roleAPI from "../../../services/roleAPI";
+import axios from "axios";
+import jwt_decode from "jwt-decode";
+import Cookies from "js-cookie";
 
 export default function EmployeeList({ accessToken }) {
+
+
+    //XỬ LÝ CONFIG AXIOS
+    const user = useSelector(state => state.user.user);
+    const axiosJWT = axios.create();
+    const dispatch = useDispatch();
+
+    axiosJWT.interceptors.request.use(async(config) => {
+        let date = new Date();
+        const decodedToken = jwt_decode(user.access_token);
+        if(decodedToken.exp < date.getTime() / 1000) {
+            const res = await axios(`${process.env.REACT_APP_API_URL}/api/auth/refresh-token`, {
+                method: "post",
+                withCredentials: true
+            });
+            Cookies.set("refreshToken", res.data.data.refresh_token);
+            const refreshUser = {
+                ...user,
+                access_token: res.data.data.access_token
+            };
+            dispatch(setUserInfo({user: refreshUser, login: true}));
+            config.headers["token"] = `Bearer ${res.data.data.access_token}`;
+        };
+        return config;
+    }, e => {
+        return Promise.reject(e);
+    });
 
 
     //KHAI BÁO BIẾN
@@ -22,7 +54,7 @@ export default function EmployeeList({ accessToken }) {
     //XỬ LÝ LẤY TẤT CẢ NHÂN VIÊN
     const getAllEmployees = async() => {
         setIsLoading(true);
-        const res = await employeeAPI.getAll(accessToken);
+        const res = await employeeAPI.getAll(accessToken, axiosJWT);
         setEmployeeList(res.data.data);
         setIsLoading(false);
     };
@@ -31,7 +63,7 @@ export default function EmployeeList({ accessToken }) {
     //CALL API
     useEffect(() => {
         const getAllRoles = async() => {
-            const res = await roleAPI.getAll(accessToken);
+            const res = await roleAPI.getAll(accessToken, axiosJWT);
             setRoleList(res.data.data.filter(role => {
                 return role.role_id !== 1;
             }));
@@ -125,7 +157,7 @@ export default function EmployeeList({ accessToken }) {
 
     //XỬ LÝ XÓA NHÂN VIÊN
     const handleDeleteEmployee = async(record) => {
-        const res = await employeeAPI.delete(record.user_id, accessToken);
+        const res = await employeeAPI.delete(record.user_id, accessToken, axiosJWT);
         if(res.data.errCode === 0) {
             toast.success("Xóa thành công");
             getAllEmployees();

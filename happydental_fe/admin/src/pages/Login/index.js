@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { setUserInfo } from "../../slices/userSlice";
 import { Spin } from "antd";
+import Cookies from "js-cookie";
 import authAPI from "../../services/authAPI";
 
 export default function Login() {
@@ -31,8 +32,10 @@ export default function Login() {
                 toast.error("Không đúng phân quyền");
             }
             else {
-                const action = setUserInfo({user: res.data.data, login: true});
+                const {refresh_token, ...data} = res.data.data;
+                const action = setUserInfo({user: data, login: true});
                 dispatch(action);
+                Cookies.set("refreshToken", res.data.data.refresh_token);
             };
         }
         else if(res.data.errCode === 4) {

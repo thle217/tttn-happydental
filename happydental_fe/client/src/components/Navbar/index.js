@@ -4,6 +4,7 @@ import { Button, Popconfirm } from "antd";
 import { setLoginOpen } from "../../slices/loginSlice";
 import { setRegisterOpen } from "../../slices/registerSlice";
 import { setUserInfo } from "../../slices/userSlice";
+import Cookies from "js-cookie";
 import Dropdown from 'react-bootstrap/Dropdown';
 import Login from "../Login";
 import Register from "../Register";
@@ -16,6 +17,7 @@ export default function Navbar() {
 
     //XỬ LÝ ĐĂNG XUẤT
     const handleLogout = () => {
+        Cookies.remove("customerRefreshToken");
         dispatch(setUserInfo({user: null, login: false}));
         navigate("/");
     };

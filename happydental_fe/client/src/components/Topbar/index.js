@@ -10,7 +10,7 @@ export default function Topbar() {
                 <div className="col-lg-7 px-5 text-start">
                     <div className="h-100 d-inline-flex align-items-center py-3 me-4">
                         <small className="text-primary me-2"><FontAwesomeIcon icon={faMapMarkerAlt}/></small>
-                        <small>180 Cao Lỗ, Phường 4, Quận 8, TP.HCM</small>
+                        <small>180 Cao Lỗ, P4, Q8, TP.HCM</small>
                     </div>
                     <div className="h-100 d-inline-flex align-items-center py-3">
                         <small className="text-primary me-2"><FontAwesomeIcon icon={faClock}/></small>

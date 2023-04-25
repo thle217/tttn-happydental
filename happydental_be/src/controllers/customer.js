@@ -1,11 +1,11 @@
-import userServices from "../services/userServices";
+import userServices from "../services/user";
 require("dotenv").config();
 
 
-//XỬ LÝ LẤY TẤT CẢ NHÂN VIÊN
+//XỬ LÝ LẤY TẤT CẢ KHÁCH HÀNG
 const handleGetAll = async(req, res) => {
     try {
-        const result = await userServices.getAllByType({type: 0});
+        const result = await userServices.getAllByType({type: 1});
         return res.status(200).json(result);
     }
     catch(e) {
@@ -18,23 +18,7 @@ const handleGetAll = async(req, res) => {
 };
 
 
-// XỬ LÝ LẤY TẤT CẢ NHÂN VIÊN THEO VAI TRÒ
-const handleGetAllByRole = async(req, res) => {
-    try {
-        const result = await userServices.getAllByRole(req.params.role_id);
-        return res.status(200).json(result);
-    }
-    catch(e) {
-        console.log(e);
-        return res.status(200).json({
-            errCode: -1,
-            message: "Error from the server"
-        });
-    };
-};
-
-
-//XỬ LÝ TẠO MỚI NHÂN VIÊN
+//XỬ LÝ TẠO MỚI KHÁCH HÀNG
 const handleCreate = async(req, res) => {
     try {
         const result = await userServices.createUser(req.body);
@@ -66,7 +50,7 @@ const handleUpdate = async(req, res) => {
 };
 
 
-//XỬ LÝ XÓA NHÂN VIÊN THEO ID
+//XỬ LÝ XÓA KHÁCH HÀNG THEO ID
 const handleDelete = async(req, res) => {
     try {
         const result = await userServices.deleteUser(req.params.user_id);
@@ -84,7 +68,6 @@ const handleDelete = async(req, res) => {
 
 module.exports = {
     handleGetAll,
-    handleGetAllByRole,
     handleCreate,
     handleUpdate,
     handleDelete,

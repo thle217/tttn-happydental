@@ -1,8 +1,13 @@
 import { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { Form, Input, DatePicker, Radio, Select, Button, Popconfirm, Spin } from "antd";
+import { setUserInfo } from "../../../slices/userSlice";
+import axios from "axios";
+import jwt_decode from "jwt-decode";
+import Cookies from "js-cookie";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
@@ -16,18 +21,45 @@ import AnimatedPage from "../../../utils/AnimatedPage";
 export default function EmployeeDetails({ accessToken }) {
 
 
-    //STATE CHỨA ĐỊA CHỈ CHỌN TỪ SELECT
+    //XỬ LÝ CONFIG AXIOS
+    const data = useSelector(state => state.user.user);
+    const axiosJWT = axios.create();
+    const dispatch = useDispatch();
+
+    axiosJWT.interceptors.request.use(async(config) => {
+        let date = new Date();
+        const decodedToken = jwt_decode(data.access_token);
+        if(decodedToken.exp < date.getTime() / 1000) {
+            const res = await axios(`${process.env.REACT_APP_API_URL}/api/auth/refresh-token`, {
+                method: "post",
+                withCredentials: true
+            });
+            Cookies.set("refreshToken", res.data.data.refresh_token);
+            const refreshUser = {
+                ...data,
+                access_token: res.data.data.access_token
+            };
+            dispatch(setUserInfo({user: refreshUser, login: true}));
+            config.headers["token"] = `Bearer ${res.data.data.access_token}`;
+        };
+        return config;
+    }, e => {
+        return Promise.reject(e);
+    });
+
+
+    //STATE CHỨA API ĐỊA CHỈ - ĐỊA CHỈ CHỌN TỪ SELECT
+    const [cityList, setCityList] = useState([]);
+    const [districtList, setDistrictList] = useState([]);
+    const [wardList, setWardList] = useState([]);
     const [city, setCity] = useState(null);
     const [district, setDistrict] = useState(null);
     const [ward, setWard] = useState(null);
     const [street, setStreet] = useState(null);
 
 
-    //STATE CHỨA DANH SÁCH LẤY TỪ API
+    //STATE CHỨA LIST VAI TRÒ VÀ DANH MỤC DỊCH VỤ
     const [roleList, setRoleList] = useState([]);
-    const [cityList, setCityList] = useState([]);
-    const [districtList, setDistrictList] = useState([]);
-    const [wardList, setWardList] = useState([]);
 
 
     //STATE CHỨA THÔNG TIN ẢNH
@@ -35,7 +67,7 @@ export default function EmployeeDetails({ accessToken }) {
     const [file, setFile] = useState(null);
 
 
-    //KHAI BÁO FORM, STATE LOADING KHI THÊM MỚI
+    //KHAI BÁO ANTD, STATE LOADING
     const [form] = Form.useForm();
     const [isLoading, setIsLoading] = useState(false);
 
@@ -87,7 +119,7 @@ export default function EmployeeDetails({ accessToken }) {
         window.scrollTo({top: 0, behavior: 'smooth'});
 
         const getAllRoles = async() => {
-            const res = await roleAPI.getAll(accessToken);
+            const res = await roleAPI.getAll(accessToken, axiosJWT);
             setRoleList(res.data.data.filter(role => {
                 return role.role_id !== 1;
             }));
@@ -99,6 +131,7 @@ export default function EmployeeDetails({ accessToken }) {
 
         getAllRoles();
         getAllCities();
+
         if(city) {
             getDistrictsByCity();
             getWardsByDistrict();
@@ -108,7 +141,7 @@ export default function EmployeeDetails({ accessToken }) {
             setLocalPath(user.avatar);
         };
     }, []);
-  
+
 
     //XỬ LÝ CHỌN ẢNH TỪ MÁY
     const handleChooseAvatar = async(e) => {
@@ -166,7 +199,7 @@ export default function EmployeeDetails({ accessToken }) {
         };
 
         setIsLoading(true);
-        const res = await employeeAPI.create(userInfo, accessToken);
+        const res = await employeeAPI.create(userInfo, accessToken, axiosJWT);
         setIsLoading(false);
         if(res.data.errCode === 0) {
             toast.success("Thêm thành công");
@@ -213,7 +246,7 @@ export default function EmployeeDetails({ accessToken }) {
         };
 
         setIsLoading(true);
-        const res = await employeeAPI.update(userInfo, user.user_id, accessToken);
+        const res = await employeeAPI.update(userInfo, user.user_id, accessToken, axiosJWT);
         setIsLoading(false);
         if(res.data.errCode === 0) {
             toast.success("Cập nhật thành công");
@@ -514,55 +547,55 @@ export default function EmployeeDetails({ accessToken }) {
                                                 </div>
                                                 <div className="col-md-2 mt-3">
                                                     <Form.Item label="Quận/huyện" name="district">
-                                                            <Select
-                                                                placeholder="Chọn quận/huyện"
-                                                                size="large"
-                                                                showSearch
-                                                                options={
-                                                                    districtList.map(data => {
-                                                                        return {
-                                                                            value: data.name,
-                                                                            label: data.name,
-                                                                            code: data.code
-                                                                        }
-                                                                    })
-                                                                }
-                                                                onChange={(value, obj) => {
-                                                                    setDistrict(value);
-                                                                    getWardsByDistrict(obj.code);
-                                                                }}
-                                                                disabled={city || (user && user.city) ? false : true}
-                                                            />
+                                                        <Select
+                                                            placeholder="Chọn quận/huyện"
+                                                            size="large"
+                                                            showSearch
+                                                            options={
+                                                                districtList.map(data => {
+                                                                    return {
+                                                                        value: data.name,
+                                                                        label: data.name,
+                                                                        code: data.code
+                                                                    }
+                                                                })
+                                                            }
+                                                            onChange={(value, obj) => {
+                                                                setDistrict(value);
+                                                                getWardsByDistrict(obj.code);
+                                                            }}
+                                                            disabled={city || (user && user.city) ? false : true}
+                                                        />
                                                     </Form.Item>
                                                 </div>
                                                 <div className="col-md-2 mt-3">
                                                     <Form.Item label="Phường/xã" name="ward">
-                                                            <Select
-                                                                placeholder="Chọn phường/xã"
-                                                                size="large"
-                                                                showSearch
-                                                                options={
-                                                                    wardList.map(data => {
-                                                                        return {
-                                                                            value: data.name,
-                                                                            label: data.name,
-                                                                            code: data.code
-                                                                        }
-                                                                    })
-                                                                }
-                                                                onChange={value => setWard(value)}
-                                                                disabled={district || (user && user.district) ? false : true}
-                                                            />
+                                                        <Select
+                                                            placeholder="Chọn phường/xã"
+                                                            size="large"
+                                                            showSearch
+                                                            options={
+                                                                wardList.map(data => {
+                                                                    return {
+                                                                        value: data.name,
+                                                                        label: data.name,
+                                                                        code: data.code
+                                                                    }
+                                                                })
+                                                            }
+                                                            onChange={value => setWard(value)}
+                                                            disabled={district || (user && user.district) ? false : true}
+                                                        />
                                                     </Form.Item>
                                                 </div>
                                                 <div className="col-md-4 mt-3">
                                                     <Form.Item label="Số nhà và tên đường" name="street">
-                                                            <Input
-                                                                size="large"
-                                                                placeholder="Số nhà và tên đường"
-                                                                onChange={e => setStreet(e.target.value)}
-                                                                disabled={ward || (user && user.ward) ? false : true}
-                                                            />
+                                                        <Input
+                                                            size="large"
+                                                            placeholder="Số nhà và tên đường"
+                                                            onChange={e => setStreet(e.target.value)}
+                                                            disabled={ward || (user && user.ward) ? false : true}
+                                                        />
                                                     </Form.Item>
                                                 </div>
                                             </div>

@@ -2,6 +2,7 @@ import Home from "../pages/Home";
 import CategoryList from "../pages/CategoryList";
 import DoctorList from "../pages/DoctorList";
 import Account from "../pages/Account";
+import Contact from "../pages/Contact";
 import NotFound from "../components/NotFound";
 
 export const publicRoutes = [
@@ -16,6 +17,10 @@ export const publicRoutes = [
     {
         path: "/doi-ngu-bac-si",
         page: DoctorList
+    },
+    {
+        path: "/lien-he",
+        page: Contact
     },
     {
         path: "*",

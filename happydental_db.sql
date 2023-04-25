@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3306
--- Generation Time: Apr 19, 2023 at 05:28 PM
+-- Generation Time: Apr 25, 2023 at 06:59 AM
 -- Server version: 5.7.36
 -- PHP Version: 7.4.26
 
@@ -104,19 +104,19 @@ CREATE TABLE IF NOT EXISTS `categories` (
   `createdAt` date DEFAULT NULL,
   `updatedAt` date DEFAULT NULL,
   PRIMARY KEY (`category_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4;
 
 --
 -- Dumping data for table `categories`
 --
 
 INSERT INTO `categories` (`category_id`, `category_name`, `status`, `createdAt`, `updatedAt`) VALUES
-(1, 'nha khoa tổng quát', 1, '2023-04-17', '2023-04-17'),
-(3, 'niềng răng', 1, '2023-04-17', '2023-04-17'),
-(4, 'nhổ răng khôn', 1, '2023-04-17', '2023-04-17'),
-(5, 'trồng răng implant', 1, '2023-04-17', '2023-04-17'),
-(9, 'bọc răng sứ', 1, '2023-04-17', '2023-04-18'),
-(10, 'tẩy trắng răng', 1, '2023-04-17', '2023-04-18');
+(1, 'nha khoa tổng quát', 1, '2023-04-25', '2023-04-25'),
+(2, 'trồng răng implant', 1, '2023-04-25', '2023-04-25'),
+(3, 'bọc răng sứ', 1, '2023-04-25', '2023-04-25'),
+(4, 'tẩy trắng răng', 1, '2023-04-25', '2023-04-25'),
+(5, 'niềng răng', 1, '2023-04-25', '2023-04-25'),
+(6, 'nhổ răng khôn', 1, '2023-04-25', '2023-04-25');
 
 -- --------------------------------------------------------
 
@@ -270,25 +270,28 @@ CREATE TABLE IF NOT EXISTS `users` (
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
   `is_verified` tinyint(1) NOT NULL,
+  `refresh_token` varchar(255) DEFAULT NULL,
   `createdAt` date DEFAULT NULL,
   `updatedAt` date DEFAULT NULL,
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `email` (`email`),
   KEY `fk_roleId_of_users` (`role_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `role_id`, `fullname`, `avatar`, `dob`, `gender`, `phone`, `degree`, `start_date`, `street`, `ward`, `district`, `city`, `email`, `password`, `is_verified`, `createdAt`, `updatedAt`) VALUES
-(1, 2, 'Thi Hau Le', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1681214017/o4ml9etjmua1ruj3dqgp.jpg', '2001-07-21', 0, '0767039678', 'Sinh viên', '2019-09-16', NULL, NULL, NULL, NULL, 'admin001@gmail.com', '$2b$10$.OTnpmGKOwwmXpN5CnUmsuQL/TjDsrVbYEg.EwfMQAPFfalYF.AEm', 1, '2023-04-11', '2023-04-13'),
-(2, 3, 'Lễ tân 01', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1681805412/elndnkkspn3xiptccefi.jpg', '2000-04-11', 1, '0901234987', 'Cử nhân', NULL, NULL, NULL, 'Quận Tân Bình', 'Thành phố Hồ Chí Minh', 'letan01@gmail.com', '$2b$10$Yp5EbAIoiRvn7iYr/08jAuaV47eV38ce/z.uSVS3dLxATFOZeyem.', 1, '2023-04-11', '2023-04-18'),
-(8, 1, 'Nguyễn Văn A', NULL, '2001-04-10', 1, '0901234987', NULL, NULL, NULL, NULL, 'Huyện Bảo Yên', 'Tỉnh Lào Cai', 'khachhang001@gmail.com', '$2b$10$fbZujjc917JipaEeRgXk3eZRm7rg.1nZYC4XbiFzdzoTFucaz2LBm', 1, '2023-04-16', '2023-04-18'),
-(9, 4, 'Bác sĩ 01', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1681650932/sj4gbriwslmfqqpgbh0t.jpg', '1999-12-12', 0, '0901234987', 'Thạc sĩ', '2023-04-16', NULL, NULL, NULL, 'Tỉnh Bắc Kạn', 'bacsi01@gmail.com', '$2b$10$.mDVXhPAImR9015dEv7JcepiX4wu84j2jrMEJkioAU0IkvVcCqv/i', 0, '2023-04-16', '2023-04-16'),
-(10, 4, 'Bác sĩ 02', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1681650973/xjsabpjxjvgozmgzvibf.jpg', '1989-04-05', 1, '0901234567', 'Tiến sĩ', NULL, NULL, NULL, NULL, NULL, 'bacsi02@gmail.com', '$2b$10$YCXXwqLg6Ok30REegzVsW.QE7Kdhn.8ymsjUcgPEupr44zRgiEv/S', 0, '2023-04-16', '2023-04-16'),
-(11, 4, 'Bác sĩ 03', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1681651013/hj3kkrcl9naomjezh0jp.jpg', '1996-04-11', 0, '0901234987', 'Thạc sĩ', NULL, NULL, NULL, NULL, NULL, 'bacsi03@gmail.com', '$2b$10$xoI7E/1UjTX20R5GJO/JdONIjfkWxJI.08uY1Cf7rdAafR2uUbY7O', 0, '2023-04-16', '2023-04-16'),
-(12, 4, 'Bác sĩ 04', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1681651067/t3kfymrryfzacgrb7d7a.jpg', '1980-01-16', 1, '0701234987', 'Thạc sĩ', NULL, NULL, NULL, NULL, NULL, 'bacsi04@gmail.com', '$2b$10$vII7WKOi8TLr6J8ZczeT8.NvEswVXiSC./FAweoSQausW9PDKDzfS', 0, '2023-04-16', '2023-04-16');
+INSERT INTO `users` (`user_id`, `role_id`, `fullname`, `avatar`, `dob`, `gender`, `phone`, `degree`, `start_date`, `street`, `ward`, `district`, `city`, `email`, `password`, `is_verified`, `refresh_token`, `createdAt`, `updatedAt`) VALUES
+(1, 2, 'Thi Hau Le', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682402080/bgx1zgg5dftavhhduypy.jpg', '2001-07-21', 0, '0767039678', NULL, NULL, NULL, NULL, NULL, NULL, 'admin001@gmail.com', '$2b$10$sFxzAMzjhs2NUKHsSXx78OfYQRLIEUWuw4tBZd6FBAOdklsIqYzVO', 1, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlX2lkIjoyLCJ1c2VyX2lkIjoxLCJpYXQiOjE2ODI0MDQ5NzIsImV4cCI6MTcxMzk0MDk3Mn0.dQEjl0MU9pQx3BPr0RAav0Mb5AW2yKt4IfGKV7YNhg8', '2023-04-24', '2023-04-25'),
+(2, 3, 'Lễ Tân 01', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682402092/s0bteixxrophusnarjby.jpg', '2000-02-22', 0, '0901231234', NULL, NULL, NULL, NULL, NULL, NULL, 'letan01@gmail.com', '$2b$10$/T88uM4S0PGiMNt7xw04bemH0ZJELPq6Odu.9Gig/kD3lSHgWmv.O', 1, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlX2lkIjoyLCJ1c2VyX2lkIjoyLCJpYXQiOjE2ODIzMjM0MzQsImV4cCI6MTcxMzg1OTQzNH0.LMcpG8JXsCczwCHnwLjlCIHrPSYIlrDQN1QHresbNWc', '2023-04-24', '2023-04-25'),
+(3, 4, 'Bác sĩ 01', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682402114/f1dqnmyvhghtf282c82h.jpg', '1989-04-25', 0, '0901234987', 'Tiến sĩ', NULL, NULL, NULL, NULL, NULL, 'bacsi01@gmail.com', '$2b$10$QaufAIDOcZL96PTfAL4cYugHgRfPhGVYRfS1M6i3CbgrwU8N1yH.2', 0, NULL, '2023-04-25', '2023-04-25'),
+(4, 4, 'Bác sĩ 02', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682402166/z1tw8r2pf0dsvj5ibavo.jpg', '1988-07-02', 1, '0901234567', 'Tiến sĩ', NULL, NULL, NULL, 'Quận 10', 'Thành phố Hồ Chí Minh', 'bacsi02@gmail.com', '$2b$10$w8ZFZoOZwKZkHGtb3tEPVOS5..bHs65DcjYEKAVTerWsbuuTPjsGK', 0, NULL, '2023-04-25', '2023-04-25'),
+(5, 4, 'Bác sĩ 03', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682402212/qmhq9swjdycsrze2bqmq.jpg', '1995-02-10', 0, '0901234561', 'Thạc sĩ', NULL, NULL, NULL, NULL, NULL, 'bacsi03@gmail.com', '$2b$10$RP47SB64R1WV89TpbRzdSe238N/mL7iMz6czqrw2C/BFOkLCf3eZ6', 0, NULL, '2023-04-25', '2023-04-25'),
+(6, 4, 'Bác sĩ 04', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682402263/mfmi9zy2b7505tzwqmfy.jpg', '1977-10-10', 1, '0901231234', 'Tiến sĩ', NULL, NULL, NULL, NULL, NULL, 'bacsi04@gmail.com', '$2b$10$Cwunaoy61EV5eALbtqkgFe/kBGwg.hjiYF9jxvbtEHdEtfchPCxNO', 0, NULL, '2023-04-25', '2023-04-25'),
+(7, 5, 'Phụ tá 01', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682402311/rmixlq96qtr88edtqsex.png', '2000-01-16', 1, '0908761234', 'Cử nhân', NULL, NULL, NULL, NULL, NULL, 'phuta01@gmail.com', '$2b$10$Z0xATJb0LByOwtif5J9j9Ol1SIXJN8sNWBZRv9nzV5ulTcSeBDEeC', 0, NULL, '2023-04-25', '2023-04-25'),
+(8, 1, 'Nguyễn Văn A', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682403677/yu4lcri0jcfm1oalvavr.jpg', '2001-10-10', 1, '0901231236', NULL, NULL, NULL, NULL, NULL, 'Thành phố Hồ Chí Minh', 'banhcamatcha@gmail.com', '$2b$10$aJWW4bkQ6ajDJefXNr71fu5T4bobEAuPGGuIC6TPxWqmSJR8dvJm6', 1, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlX2lkIjoxLCJ1c2VyX2lkIjo4LCJpYXQiOjE2ODI0MDM3MDYsImV4cCI6MTcxMzkzOTcwNn0.AQjm2lZBkTRi_YfgiW_-YdehD4jXW8txRtqa_Coi6as', '2023-04-25', '2023-04-25'),
+(9, 1, 'Trần Thị B', 'https://res.cloudinary.com/dcteqnz2i/image/upload/v1682404724/pfalqmzvya0d01kzwd9n.jpg', '1999-07-10', 0, '0901231238', NULL, NULL, NULL, NULL, 'Quận Ba Đình', 'Thành phố Hà Nội', 'khachhang001@gmail.com', '$2b$10$vJihWyCR..NpJmFAmJ0Z4elcjFjsS4pDxKp85Z97DXkrZRdSEwoXO', 1, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlX2lkIjoxLCJ1c2VyX2lkIjo5LCJpYXQiOjE2ODI0MDQ5MjcsImV4cCI6MTcxMzk0MDkyN30.SbmM689SXVd-UbjC3lLlqXw7X1B4o63xXzkWAVu9SNs', '2023-04-25', '2023-04-25');
 
 --
 -- Constraints for dumped tables

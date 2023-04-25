@@ -1,4 +1,4 @@
-import userServices from "../services/userServices";
+import userServices from "../services/user";
 require("dotenv").config();
 
 
@@ -22,6 +22,15 @@ const handleRegister = async(req, res) => {
 const handleLogin = async(req, res) => {
     try {
         const result = await userServices.login(req.body);
+        // if(result.refreshToken) {
+        //     res.cookie("refreshToken", result.refreshToken, {
+        //         httpOnly: true,
+        //         secure: false, //deploy thì để thành true
+        //         sameSite: "strict"
+        //     });
+        //     const {refreshToken, ...rest} = result;
+        //     return res.status(200).json(rest);
+        // };
         return res.status(200).json(result);
     }
     catch(e) {
@@ -131,6 +140,48 @@ const handleChangePassword = async(req, res) => {
 };
 
 
+//XỬ LÝ REFRESH TOKEN
+const handleRefreshToken = async(req, res) => {
+    try {
+        const result = await userServices.refreshToken(req.cookies);
+        // if(result.refreshToken) {
+        //     res.cookie("refreshToken", result.refreshToken, {
+        //         httpOnly: true,
+        //         secure: false, //deploy thì để thành true
+        //         sameSite: "strict"
+        //     });
+        //     const {refreshToken, ...rest} = result;
+        //     return res.status(200).json(rest);
+        // };
+        return res.status(200).json(result);
+    }
+    catch(e) {
+        console.log(e);
+        return res.status(200).json({
+            errCode: -1,
+            message: "Error from the server"
+        });
+    };
+};
+
+
+//XỬ LÝ ĐĂNG XUẤT
+const handleLogout = async(req, res) => {
+    try {
+        res.clearCookie("refreshToken");
+        const result = await userServices.logout(req.cookies);
+        return res.status(200).json(result);
+    }
+    catch(e) {
+        console.log(e);
+        return res.status(200).json({
+            errCode: -1,
+            message: "Error from the server"
+        });
+    };
+};
+
+
 module.exports = {
     handleRegister,
     handleLogin,
@@ -138,4 +189,6 @@ module.exports = {
     handleForgotPassword,
     handleResetPassword,
     handleChangePassword,
+    handleRefreshToken,
+    handleLogout,
 };

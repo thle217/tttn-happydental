@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import DoctorCard from "../../components/DoctorCard";
 import AnimatedPage from "../../utils/AnimatedPage";
-import userAPI from "../../services/userAPI";
+import customerAPI from "../../services/customerAPI";
 
 export default function DoctorList() {
 
@@ -10,7 +10,7 @@ export default function DoctorList() {
     useEffect(() => {
         window.scrollTo({top: 0, behavior: 'smooth'});
         const getAllDoctors = async() => {
-            const res = await userAPI.getAllDoctors();
+            const res = await customerAPI.getAllDoctors();
             setDoctorList(res.data.data);
         };
         getAllDoctors();

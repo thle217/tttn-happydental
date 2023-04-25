@@ -2,7 +2,7 @@ import db from "../models/index";
 import { Op } from "sequelize";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import mail from "./emailServices";
+import mail from "./email";
 require("dotenv").config();
 const saltRounds = 10;
 
@@ -44,10 +44,26 @@ const createAccessToken = (role_id, user_id) => {
         },
         process.env.JWT_ACCESS_TOKEN,
         {
-            expiresIn: "3h"
+            expiresIn: process.env.JWT_ACCESS_EXPIRES_IN
         }
     );
     return accessToken
+};
+
+
+//TẠO REFRESH TOKEN
+const createRefreshToken = (role_id, user_id) => {
+    const refreshToken = jwt.sign(
+        {
+            role_id: role_id,
+            user_id: user_id
+        },
+        process.env.JWT_REFRESH_TOKEN,
+        {
+            expiresIn: process.env.JWT_REFRESH_EXPIRES_IN
+        }
+    );
+    return refreshToken
 };
 
 
@@ -67,6 +83,76 @@ const register = (data) => {
             else {
                 const result = await createUser({...data, role_id: 1});
                 resolve(result);
+            };
+        }
+        catch(e) {
+            reject(e);
+        };
+    });
+};
+
+
+//ĐĂNG NHẬP
+const login = (data) => {
+    return new Promise(async(resolve, reject) => {
+        try {
+            if(!data.email || !data.password) {
+                resolve({
+                    errCode: 3,
+                    message: "Missing params"
+                });
+            }
+            else {
+                const user = await getUserByEmail(data.email);
+                if(user) {
+                    if(user.is_verified) {
+                        const isValidPassword = await bcrypt.compare(data.password, user.password);
+                        if(isValidPassword) {
+                            const accessToken = createAccessToken(user.role_id, user.user_id);
+                            const refreshToken = createRefreshToken(user.role_id, user.user_id);
+                            const result = await db.User.update(
+                                {refresh_token: refreshToken},
+                                {where: {user_id: user.user_id}}
+                            );
+                            if(result[0] === 1) {
+                                const {password, ...data} = user;
+                                resolve({
+                                    errCode: 0,
+                                    message: "Successful",
+                                    data: {
+                                        ...data,
+                                        access_token: accessToken,
+                                        refresh_token: refreshToken
+                                    }
+                                });
+                            }
+                            else {
+                                resolve({
+                                    errCode: 5,
+                                    message: "Failed"
+                                });
+                            };
+                        }
+                        else {
+                            resolve({
+                                errCode: 2,
+                                message: "Invalid login info"
+                            });
+                        };
+                    }
+                    else {
+                        resolve({
+                            errCode: 4,
+                            message: "Unverified user"
+                        });
+                    };
+                }
+                else {
+                    resolve({
+                        errCode: 2,
+                        message: "Invalid login info"
+                    });
+                };
             };
         }
         catch(e) {
@@ -206,59 +292,6 @@ const resetPassword = (data) => {
 };
 
 
-//ĐĂNG NHẬP
-const login = (data) => {
-    return new Promise(async(resolve, reject) => {
-        try {
-            if(!data.email || !data.password) {
-                resolve({
-                    errCode: 3,
-                    message: "Missing params"
-                });
-            }
-            else {
-                const user = await getUserByEmail(data.email);
-                if(user) {
-                    if(user.is_verified) {
-                        const isValidPassword = await bcrypt.compare(data.password, user.password);
-                        if(isValidPassword) {
-                            const accessToken = createAccessToken(user.role_id, user.user_id);
-                            const {password, ...data} = user;
-                            resolve({
-                                errCode: 0,
-                                message: "Successful",
-                                data: {...data, accessToken}
-                            });
-                        }
-                        else {
-                            resolve({
-                                errCode: 2,
-                                message: "Invalid login info"
-                            });
-                        };
-                    }
-                    else {
-                        resolve({
-                            errCode: 4,
-                            message: "Unverified user"
-                        });
-                    };
-                }
-                else {
-                    resolve({
-                        errCode: 2,
-                        message: "Invalid login info"
-                    });
-                };
-            };
-        }
-        catch(e) {
-            reject(e);
-        };
-    });
-};
-
-
 //ĐỔI MẬT KHẨU
 const changePassword = (data, user_id) => {
     return new Promise(async(resolve, reject) => {
@@ -325,19 +358,100 @@ const changePassword = (data, user_id) => {
 };
 
 
-//LẤY TẤT CẢ NGƯỜI DÙNG THEO VAI TRÒ
-const getAllByRole = (role_id) => {
+//REFRESH TOKEN
+const refreshToken = (data) => {
     return new Promise(async(resolve, reject) => {
         try {
-            const users = await db.User.findAll({
-                where: {role_id: role_id},
-                attributes: {exclude: ["password"]}
-            });
-            resolve({
-                errCode: 0,
-                message: "Get all by role",
-                data: users
-            });
+            if(!data.refreshToken) {
+                resolve({
+                    errCode: 3,
+                    message: "Missing params"
+                });
+            }
+            else {
+                const refreshToken = data.refreshToken;
+                jwt.verify(refreshToken, process.env.JWT_REFRESH_TOKEN, async(err, user) => {
+                    if(err) {
+                        console.log(err);
+                    }
+                    else {
+                        const refreshTokenInDB = await db.User.findOne({
+                            where: {user_id: user.user_id},
+                            attributes: ["refresh_token"]
+                        });
+                        if(refreshTokenInDB.refresh_token == refreshToken) {
+                            const newAccessToken = createAccessToken(user.role_id, user.user_id);
+                            const newRefreshToken = createRefreshToken(user.role_id, user.user_id);
+                            const result = await db.User.update(
+                                {refresh_token: newRefreshToken},
+                                {where: {user_id: user.user_id}}
+                            );
+                            if(result[0] === 1) {
+                                resolve({
+                                    errCode: 0,
+                                    message: "Successful",
+                                    data: {access_token: newAccessToken, refresh_token: newRefreshToken}
+                                });
+                            }
+                            else {
+                                resolve({
+                                    errCode: 5,
+                                    message: "Failed"
+                                });
+                            };
+                        }
+                        else {
+                            resolve({
+                                errCode: 2,
+                                message: "Invalid refresh token"
+                            });
+                        };
+                    };
+                });
+            };
+        }
+        catch(e) {
+            reject(e);
+        };
+    });
+};
+
+
+//ĐĂNG XUẤT
+const logout = (data) => {
+    return new Promise(async(resolve, reject) => {
+        try {
+            if(!data.refreshToken) {
+                resolve({
+                    errCode: 3,
+                    message: "Missing params"
+                });
+            }
+            else {
+                jwt.verify(data.refreshToken, process.env.JWT_REFRESH_TOKEN, async(err, user) => {
+                    if(err) {
+                        console.log(err);
+                    }
+                    else {
+                        const result = await db.User.update(
+                            {refresh_token: null},
+                            {where: {user_id: user.user_id}}
+                        );
+                        if(result[0] === 1) {
+                            resolve({
+                                errCode: 0,
+                                message: "Logged out"
+                            });
+                        }
+                        else {
+                            resolve({
+                                errCode: 5,
+                                message: "Failed"
+                            });
+                        };
+                    };
+                });
+            };
         }
         catch(e) {
             reject(e);
@@ -367,6 +481,27 @@ const getAllByType = (data) => {
             resolve({
                 errCode: 0,
                 message: data.type ? "Get all customers" : "Get all employees",
+                data: users
+            });
+        }
+        catch(e) {
+            reject(e);
+        };
+    });
+};
+
+
+//LẤY TẤT CẢ NGƯỜI DÙNG THEO VAI TRÒ
+const getAllByRole = (role_id) => {
+    return new Promise(async(resolve, reject) => {
+        try {
+            const users = await db.User.findAll({
+                where: {role_id: role_id},
+                attributes: {exclude: ["password"]}
+            });
+            resolve({
+                errCode: 0,
+                message: "Get all by role",
                 data: users
             });
         }
@@ -413,6 +548,73 @@ const getUserByID = (user_id) => {
 
 
 //TẠO MỚI NGƯỜI DÙNG (NHÂN VIÊN / KHÁCH HÀNG)
+// const createUser = (data) => {
+//     return new Promise(async(resolve, reject) => {
+//         try {
+//             if(
+//                 !data.role_id || !data.fullname || !data.dob || data.gender === undefined ||
+//                 !data.phone || !data.email || !data.password)
+//             {
+//                 resolve({
+//                     errCode: 3,
+//                     message: "Missing params"
+//                 });
+//             }
+//             else {
+//                 const user = await getUserByEmail(data.email);
+//                 if(user) {
+//                     resolve({
+//                         errCode: 2,
+//                         message: "Email already exists"
+//                     });
+//                 }
+//                 else {
+//                     const hashPassword = await hashUserPassword(data.password);
+//                     const newUser = await db.User.create({
+//                         role_id: data.role_id,
+//                         fullname: data.fullname,
+//                         avatar: data.avatar,
+//                         dob: data.dob,
+//                         gender: data.gender,
+//                         phone: data.phone,
+//                         degree: data.degree,
+//                         start_date: data.start_date,
+//                         street: data.street,
+//                         ward: data.ward,
+//                         district: data.district,
+//                         city: data.city,
+//                         email: data.email,
+//                         password: hashPassword,
+//                         is_verified: false
+//                     });
+//                     if(newUser.dataValues.user_id) {
+//                         const token = await bcrypt.hash(data.email, saltRounds);
+//                         await mail.sendVerifyUser({
+//                             ...data,
+//                             role_id: data.role_id,
+//                             redirectLink: `${process.env.BACKEND_URL}/api/auth/verify-user?email=${data.email}&token=${token}`
+//                         });
+//                         resolve({
+//                             errCode: 0,
+//                             message: "Created"
+//                         });
+//                     }
+//                     else {
+//                         resolve({
+//                             errCode: 5,
+//                             message: "Failed"
+//                         });
+//                     };
+//                 };
+//             };
+//         }
+//         catch(e) {
+//             reject(e);
+//         };
+//     });
+// };
+
+
 const createUser = (data) => {
     return new Promise(async(resolve, reject) => {
         try {
@@ -453,6 +655,12 @@ const createUser = (data) => {
                         is_verified: false
                     });
                     if(newUser.dataValues.user_id) {
+                        if(data.categoryList && data.role_id == 4) {
+                            await createDoctorCategory({
+                                doctor_id: newUser.dataValues.user_id,
+                                categoryList: data.categoryList
+                            });
+                        };
                         const token = await bcrypt.hash(data.email, saltRounds);
                         await mail.sendVerifyUser({
                             ...data,
@@ -472,6 +680,29 @@ const createUser = (data) => {
                     };
                 };
             };
+        }
+        catch(e) {
+            reject(e);
+        };
+    });
+};
+
+
+//TẠO MỚI BÁC SĨ ĐIỀU TRỊ NHỮNG DANH MỤC NÀO
+const createDoctorCategory = (data) => {
+    return new Promise(async(resolve, reject) => {
+        try {
+            const doctor_id = data.doctor_id;
+            let categoryList = [];
+
+            data.categoryList.map(category_id => {
+                let obj = {};
+                obj.doctor_id = doctor_id,
+                obj.category_id = category_id,
+                categoryList.push(obj);
+            });
+            db.DoctorCategory.bulkCreate(categoryList);
+            resolve(true);
         }
         catch(e) {
             reject(e);
@@ -530,12 +761,11 @@ const updateUser = (data, user_id) => {
                         );
                         if(result[0] === 1) {
                             const updatedUser = await db.User.findOne({where: {user_id: user_id}});
-                            const accessToken = createAccessToken(updatedUser.role_id, user_id);
-                            const {password, ...data} = updatedUser;
+                            const {password, refresh_token, ...data} = updatedUser;
                             resolve({
                                 errCode: 0,
                                 message: "Updated",
-                                data: {...data, accessToken}
+                                data: data
                             });
                         }
                         else {
@@ -596,13 +826,15 @@ const deleteUser = (user_id) => {
 
 module.exports = {
     register,
+    login,
     verifyUser,
     forgotPassword,
     resetPassword,
-    login,
     changePassword,
-    getAllByRole,
+    refreshToken,
+    logout,
     getAllByType,
+    getAllByRole,
     getUserByID,
     createUser,
     updateUser,

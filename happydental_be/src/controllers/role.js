@@ -1,4 +1,4 @@
-import roleServices from "../services/roleServices";
+import roleServices from "../services/role";
 
 const handleGetAll = async(req, res) => {
     try {

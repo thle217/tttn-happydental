@@ -1,13 +1,44 @@
 import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Button, Select, Modal, Form, Input, Radio, Spin } from "antd";
+import { setData } from "../../slices/dataSlice";
+import { setUserInfo } from "../../slices/userSlice";
+import axios from "axios";
+import Cookies from "js-cookie";
+import jwt_decode from "jwt-decode";
 import toast from "react-hot-toast";
 import DataTable from "../../components/DataTable";
 import categoryAPI from "../../services/categoryAPI";
-import { setData } from "../../slices/dataSlice";
 import Swal from "sweetalert2";
 
 export default function Categories({ accessToken }) {
+
+
+    //XỬ LÝ CONFIG AXIOS
+    const user = useSelector(state => state.user.user);
+    const axiosJWT = axios.create();
+    const dispatch = useDispatch();
+
+    axiosJWT.interceptors.request.use(async(config) => {
+        let date = new Date();
+        const decodedToken = jwt_decode(user.access_token);
+        if(decodedToken.exp < date.getTime() / 1000) {
+            const res = await axios(`${process.env.REACT_APP_API_URL}/api/auth/refresh-token`, {
+                method: "post",
+                withCredentials: true
+            });
+            Cookies.set("refreshToken", res.data.data.refresh_token);
+            const refreshUser = {
+                ...user,
+                access_token: res.data.data.access_token
+            };
+            dispatch(setUserInfo({user: refreshUser, login: true}));
+            config.headers["token"] = `Bearer ${res.data.data.access_token}`;
+        };
+        return config;
+    }, e => {
+        return Promise.reject(e);
+    });
 
 
     //KHAI BÁO BIẾN
@@ -18,13 +49,12 @@ export default function Categories({ accessToken }) {
     const [keyword, setKeyword] = useState("");
     const [form] = Form.useForm();
     const data = useSelector(state => state.data);
-    const dispatch = useDispatch();
 
 
     //XỬ LÝ LẤY TẤT CẢ DANH MỤC DỊCH VỤ
     const getAllCategories = async() => {
         setIsLoading(true);
-        const res = await categoryAPI.getAll(accessToken);
+        const res = await categoryAPI.getAll(accessToken, axiosJWT);
         setCategoryList(res.data.data);
         setIsLoading(false);
     };
@@ -103,7 +133,7 @@ export default function Categories({ accessToken }) {
         const res = await categoryAPI.create({
             category_name: values.category_name,
             status: values.status
-        }, accessToken);
+        }, accessToken, axiosJWT);
         setIsLoading(false);
 
         if(res.data.errCode === 0) {
@@ -126,7 +156,7 @@ export default function Categories({ accessToken }) {
         const res = await categoryAPI.update({
             category_name: values.category_name,
             status: values.status
-        }, data.category_id, accessToken);
+        }, data.category_id, accessToken, axiosJWT);
         setIsLoading(false);
 
         if(res.data.errCode === 0) {
@@ -172,7 +202,7 @@ export default function Categories({ accessToken }) {
 
     //XỬ LÝ XÓA DANH MỤC
     const handleDeleteCategory = async(record) => {
-        const res = await categoryAPI.delete(record.category_id, accessToken);
+        const res = await categoryAPI.delete(record.category_id, accessToken, axiosJWT);
         if(res.data.errCode === 0) {
             toast.success("Xóa thành công");
             getAllCategories();

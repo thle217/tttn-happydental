@@ -2,19 +2,54 @@ import { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Form, Input, DatePicker, Radio, Select, Button, Popconfirm, Spin, Modal } from "antd";
+import { setUserInfo } from "../../slices/userSlice";
+import axios from "axios";
+import jwt_decode from "jwt-decode";
+import Cookies from "js-cookie";
 import dayjs from "dayjs";
 import toast from "react-hot-toast";
 import Swal from "sweetalert2";
 import CommonUtils from "../../utils/commonUtils";
 import locationAPI from "../../services/locationAPI";
-import userAPI from "../../services/userAPI";
+import customerAPI from "../../services/customerAPI";
 import authAPI from "../../services/authAPI";
 import imageAPI from "../../services/imageAPI";
 import AnimatedPage from "../../utils/AnimatedPage";
-import { setUserInfo } from "../../slices/userSlice";
 
 
 export default function Account() {
+
+
+    //LẤY THÔNG TIN KHÁCH HÀNG
+    const user = useSelector(state => state.user.user);
+    const accessToken = user.access_token;
+    const dispatch = useDispatch();
+
+
+    //XỬ LÝ CONFIG AXIOS
+    const axiosJWT = axios.create();
+    
+    axiosJWT.interceptors.request.use(async(config) => {
+        let date = new Date();
+        const decodedToken = jwt_decode(user.access_token);
+        if(decodedToken.exp < date.getTime() / 1000) {
+            const res = await axios(`${process.env.REACT_APP_API_URL}/api/auth/refresh-token`, {
+                method: "post",
+                withCredentials: true
+            });
+            Cookies.set("customerRefreshToken", res.data.data.refresh_token);
+            const refreshUser = {
+                ...user,
+                access_token: res.data.data.access_token
+            };
+            dispatch(setUserInfo({user: refreshUser, login: true}));
+            config.headers["token"] = `Bearer ${res.data.data.access_token}`;
+        };
+        return config;
+    }, e => {
+        return Promise.reject(e);
+    });
+
 
     //STATE CHỨA ĐỊA CHỈ CHỌN TỪ SELECT
     const [city, setCity] = useState(null);
@@ -37,15 +72,6 @@ export default function Account() {
     //KHAI BÁO FORM, STATE LOADING KHI THÊM MỚI
     const [form] = Form.useForm();
     const [isLoading, setIsLoading] = useState(false);
-
-
-    //LẤY THÔNG TIN KHÁCH HÀNG
-    const user = useSelector(state => state.user.user);
-    console.log(user);
-    const accessToken = user.accessToken;
-    const dispatch = useDispatch();
-
-
     const [isOpen, setIsOpen] = useState(false);
     const navigate = useNavigate();
 
@@ -157,11 +183,15 @@ export default function Account() {
         };
 
         setIsLoading(true);
-        const res = await userAPI.update(userInfo, user.user_id, accessToken);
+        const res = await customerAPI.update(userInfo, user.user_id, accessToken, axiosJWT);
         setIsLoading(false);
         if(res.data.errCode === 0) {
             toast.success("Cập nhật thành công");
-            dispatch(setUserInfo({user: res.data.data, login: true}));
+            const updatedUser = {
+                ...res.data.data,
+                access_token: user.access_token
+            };
+            dispatch(setUserInfo({user: updatedUser, login: true}));
         }
         else if(res.data.errCode === 2) {
             toast.error("Email đã thuộc về người dùng khác");
@@ -262,229 +292,208 @@ export default function Account() {
     
     return (
         <AnimatedPage>
-            <div className="container-fluid bg-light">
-                <div className="container py-5">
-                    <div className="row">
-                        <div className="col-md">
-                            <div className="rounded p-4 bg-secondary">
-                                <div className="row mb-3">
-                                    <span className="fs-5 fw-bold">Quản lý tài khoản</span>
-                                </div>
-                                <div className="row mb-3">
-                                    <div className="col-md d-flex align-items-center flex-wrap">
-                                        {
-                                            localPath
-                                            ? 
-                                            <img
-                                                className="user-avatar rounded"
-                                                src={localPath}
-                                                alt=""
-                                            />
-                                            :
-                                            <div className="user-avatar border border-1 d-flex justify-content-center align-items-center rounded">
-                                                <small>Chưa có ảnh</small>
-                                            </div>
-                                        }
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            id="avatar"
-                                            hidden
-                                            onChange={handleChooseAvatar}
-                                        />
-                                        <label className="btn btn-light btn-choose-avatar mx-2" htmlFor="avatar">Chọn</label>
-                                        {
-                                            localPath
-                                            ?
-                                            <Popconfirm title="Bạn có muốn xóa ảnh?" cancelText="Hủy" okText="Xóa" onConfirm={handleDeleteAvatar}>
-                                                <Button className="me-2">Xóa</Button>
-                                            </Popconfirm>
-                                            :
-                                            <></>
-                                        }
-                                        <small className="avatar-size-note">Kích thước ảnh tối đa 5MB (JPEG hoặc PNG)</small>
+            <Spin tip="Đang tải..." spinning={isLoading}>
+                <div className="container-fluid bg-light">
+                    <div className="container py-5">
+                        <div className="row">
+                            <div className="col-md">
+                                <div className="rounded p-4 bg-secondary">
+                                    <div className="row mb-3">
+                                        <span className="fs-5 fw-bold">Quản lý tài khoản</span>
                                     </div>
-                                </div>
-                                <div className="row">
-                                    <div className="col-md">
-                                        <Form
-                                            layout="vertical"
-                                            onFinish={handleSubmit}
-                                            validateMessages={{
-                                                types: {
-                                                    email: "Email không đúng định dạng"
-                                                }
-                                            }}
-                                            initialValues={initialValues}
-                                        >
-                                            <div className="row">
-                                                <div className="col-md-4 mt-3">
-                                                    <Form.Item
-                                                        label="Họ và tên"
-                                                        name="fullname"
-                                                        rules={[{
-                                                            required: true,
-                                                            message: "Họ và tên không được rỗng"
-                                                        }]}
-                                                    >
-                                                        <Input size="large" placeholder="Họ và tên"/>
-                                                    </Form.Item>
+                                    <div className="row mb-3">
+                                        <div className="col-md d-flex align-items-center flex-wrap">
+                                            {
+                                                localPath
+                                                ? 
+                                                <img
+                                                    className="user-avatar rounded"
+                                                    src={localPath}
+                                                    alt=""
+                                                />
+                                                :
+                                                <div className="user-avatar border border-1 d-flex justify-content-center align-items-center rounded">
+                                                    <small>Chưa có ảnh</small>
                                                 </div>
-                                                <div className="col-md-4 mt-3">
-                                                    <Form.Item
-                                                        label="Ngày sinh"
-                                                        name="dob"
-                                                        rules={[{
-                                                            required: true,
-                                                            message: "Ngày sinh không được rỗng",
-                                                        }]}
-                                                    >
-                                                        <DatePicker size="large" placeholder="Ngày sinh"/>
-                                                    </Form.Item>
-                                                </div>
-                                                <div className="col-md-4 mt-3">
-                                                    <Form.Item label="Giới tính" name="gender">
-                                                        <Radio.Group>
-                                                            <Radio value={1}>Nam</Radio>
-                                                            <Radio value={0}>Nữ</Radio>
-                                                        </Radio.Group>
-                                                    </Form.Item>
-                                                </div>
-                                            </div>
-                                            <div className="row">
-                                                <div className="col-md-4 mt-3">
-                                                    <Form.Item
-                                                        label="Số điện thoại"
-                                                        name="phone"
-                                                        rules={[{
-                                                            required: true,
-                                                            message: "Số điện thoại không được rỗng",
-                                                        }]}
-                                                    >
-                                                        <Input size="large" placeholder="Số điện thoại"/>
-                                                    </Form.Item>
-                                                </div>
-                                                <div className="col-md-4 mt-3">
-                                                    <Form.Item
-                                                        label="Email"
-                                                        name="email"
-                                                        rules={[
-                                                            {
+                                            }
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                id="avatar"
+                                                hidden
+                                                onChange={handleChooseAvatar}
+                                            />
+                                            <label className="btn btn-light btn-choose-avatar mx-2" htmlFor="avatar">Chọn</label>
+                                            {
+                                                localPath
+                                                ?
+                                                <Popconfirm title="Bạn có muốn xóa ảnh?" cancelText="Hủy" okText="Xóa" onConfirm={handleDeleteAvatar}>
+                                                    <Button className="me-2">Xóa</Button>
+                                                </Popconfirm>
+                                                :
+                                                <></>
+                                            }
+                                            <small className="avatar-size-note">Kích thước ảnh tối đa 5MB (JPEG hoặc PNG)</small>
+                                        </div>
+                                    </div>
+                                    <div className="row">
+                                        <div className="col-md">
+                                            <Form
+                                                layout="vertical"
+                                                onFinish={handleSubmit}
+                                                validateMessages={{
+                                                    types: {
+                                                        email: "Email không đúng định dạng"
+                                                    }
+                                                }}
+                                                initialValues={initialValues}
+                                            >
+                                                <div className="row">
+                                                    <div className="col-md-4 mt-3">
+                                                        <Form.Item
+                                                            label="Họ và tên"
+                                                            name="fullname"
+                                                            rules={[{
                                                                 required: true,
-                                                                message: "Email không được rỗng"
-                                                            },
-                                                            {
-                                                                type: 'email'
-                                                            }
-                                                        ]}
-                                                    >
-                                                        <Input size="large" placeholder="Email"/>
-                                                    </Form.Item>
-                                                </div>
-                                                <div className="col-md-2 mt-3">
-                                                    <Form.Item label="Mật khẩu">
-                                                        <Button className="w-100" onClick={() => setIsOpen(true)}>Đổi mật khẩu</Button>
-                                                    </Form.Item>
-                                                    <Modal
-                                                        open={isOpen}
-                                                        onCancel={() => setIsOpen(false)}
-                                                        okButtonProps={{hidden: true}}
-                                                        cancelButtonProps={{hidden: true}}
-                                                    >
-                                                        <Spin tip="Đang tải..." spinning={isLoading}>
-                                                            <Form
-                                                                form={form}
-                                                                layout="vertical"
-                                                                onFinish={handleSubmitPassword}
-                                                            >
-                                                                <div className="row">
-                                                                    <div className="col-md mt-3">
-                                                                        <Form.Item
-                                                                            label="Mật khẩu hiện tại"
-                                                                            name="current_password"
-                                                                            rules={[{
-                                                                                required: true,
-                                                                                message: "Mật khẩu hiện tại không được rỗng"
-                                                                            }]}
-                                                                        >
-                                                                            <Input.Password
-                                                                                size="large"
-                                                                                visibilityToggle={false}
-                                                                                placeholder="Mật khẩu hiện tại"
-                                                                            />
-                                                                        </Form.Item>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="row">
-                                                                    <div className="col-md mt-3">
-                                                                        <Form.Item
-                                                                            label="Mật khẩu mới"
-                                                                            name="new_password"
-                                                                            rules={[{
-                                                                                required: true,
-                                                                                message: "Mật khẩu mới không được rỗng"
-                                                                            }]}
-                                                                        >
-                                                                            <Input.Password
-                                                                                size="large"
-                                                                                visibilityToggle={false}
-                                                                                placeholder="Mật khẩu mới"
-                                                                            />
-                                                                        </Form.Item>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="mt-3">
-                                                                    <Button htmlType="submit" className="btn-primary px-4 me-2">LƯU MẬT KHẨU</Button>
-                                                                    <Button htmlType="reset" className="px-4">RESET</Button>
-                                                                </div>
-                                                            </Form>
-                                                        </Spin>
-                                                    </Modal>
-                                                </div>
-                                                <div className="col-md-2 mt-3">
-                                                    <Form.Item label="Đăng xuất">
-                                                        <Popconfirm
-                                                            title="Bạn có muốn đăng xuất?"
-                                                            cancelText="Hủy"
-                                                            okText="Có"
-                                                            onConfirm={handleLogout}
+                                                                message: "Họ và tên không được rỗng"
+                                                            }]}
                                                         >
-                                                            <Button className="w-100 btn-primary">Đăng xuất</Button>
-                                                        </Popconfirm>
-                                                    </Form.Item>
+                                                            <Input size="large" placeholder="Họ và tên"/>
+                                                        </Form.Item>
+                                                    </div>
+                                                    <div className="col-md-4 mt-3">
+                                                        <Form.Item
+                                                            label="Ngày sinh"
+                                                            name="dob"
+                                                            rules={[{
+                                                                required: true,
+                                                                message: "Ngày sinh không được rỗng",
+                                                            }]}
+                                                        >
+                                                            <DatePicker size="large" placeholder="Ngày sinh"/>
+                                                        </Form.Item>
+                                                    </div>
+                                                    <div className="col-md-4 mt-3">
+                                                        <Form.Item label="Giới tính" name="gender">
+                                                            <Radio.Group>
+                                                                <Radio value={1}>Nam</Radio>
+                                                                <Radio value={0}>Nữ</Radio>
+                                                            </Radio.Group>
+                                                        </Form.Item>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="row">
-                                                <div className="col-md-4 mt-3">
-                                                    <Form.Item label="Thành phố/tỉnh" name="city">
-                                                        <Select
-                                                            placeholder="Chọn thành phố/tỉnh"
-                                                            size="large"
-                                                            showSearch
-                                                            options={
-                                                                cityList.map(data => {
-                                                                    return {
-                                                                        value: data.name,
-                                                                        label: data.name,
-                                                                        code: data.code
-                                                                    }
-                                                                })
-                                                            }
-                                                            onChange={(value, obj) => {
-                                                                setCity(value);
-                                                                getDistrictsByCity(obj.code);
-                                                            }}
-                                                        />
-                                                    </Form.Item>
+                                                <div className="row">
+                                                    <div className="col-md-4 mt-3">
+                                                        <Form.Item
+                                                            label="Số điện thoại"
+                                                            name="phone"
+                                                            rules={[{
+                                                                required: true,
+                                                                message: "Số điện thoại không được rỗng",
+                                                            }]}
+                                                        >
+                                                            <Input size="large" placeholder="Số điện thoại"/>
+                                                        </Form.Item>
+                                                    </div>
+                                                    <div className="col-md-4 mt-3">
+                                                        <Form.Item
+                                                            label="Email"
+                                                            name="email"
+                                                            rules={[
+                                                                {
+                                                                    required: true,
+                                                                    message: "Email không được rỗng"
+                                                                },
+                                                                {
+                                                                    type: 'email'
+                                                                }
+                                                            ]}
+                                                        >
+                                                            <Input size="large" placeholder="Email"/>
+                                                        </Form.Item>
+                                                    </div>
+                                                    <div className="col-md-2 mt-3">
+                                                        <Form.Item label="Mật khẩu">
+                                                            <Button className="w-100" onClick={() => setIsOpen(true)}>Đổi mật khẩu</Button>
+                                                        </Form.Item>
+                                                        <Modal
+                                                            open={isOpen}
+                                                            onCancel={() => setIsOpen(false)}
+                                                            okButtonProps={{hidden: true}}
+                                                            cancelButtonProps={{hidden: true}}
+                                                        >
+                                                            <Spin tip="Đang tải..." spinning={isLoading}>
+                                                                <Form
+                                                                    form={form}
+                                                                    layout="vertical"
+                                                                    onFinish={handleSubmitPassword}
+                                                                >
+                                                                    <div className="row">
+                                                                        <div className="col-md mt-3">
+                                                                            <Form.Item
+                                                                                label="Mật khẩu hiện tại"
+                                                                                name="current_password"
+                                                                                rules={[{
+                                                                                    required: true,
+                                                                                    message: "Mật khẩu hiện tại không được rỗng"
+                                                                                }]}
+                                                                            >
+                                                                                <Input.Password
+                                                                                    size="large"
+                                                                                    visibilityToggle={false}
+                                                                                    placeholder="Mật khẩu hiện tại"
+                                                                                />
+                                                                            </Form.Item>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="row">
+                                                                        <div className="col-md mt-3">
+                                                                            <Form.Item
+                                                                                label="Mật khẩu mới"
+                                                                                name="new_password"
+                                                                                rules={[{
+                                                                                    required: true,
+                                                                                    message: "Mật khẩu mới không được rỗng"
+                                                                                }]}
+                                                                            >
+                                                                                <Input.Password
+                                                                                    size="large"
+                                                                                    visibilityToggle={false}
+                                                                                    placeholder="Mật khẩu mới"
+                                                                                />
+                                                                            </Form.Item>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="mt-3">
+                                                                        <Button htmlType="submit" className="btn-primary px-4 me-2">LƯU MẬT KHẨU</Button>
+                                                                        <Button htmlType="reset" className="px-4">RESET</Button>
+                                                                    </div>
+                                                                </Form>
+                                                            </Spin>
+                                                        </Modal>
+                                                    </div>
+                                                    <div className="col-md-2 mt-3">
+                                                        <Form.Item label="Đăng xuất">
+                                                            <Popconfirm
+                                                                title="Bạn có muốn đăng xuất?"
+                                                                cancelText="Hủy"
+                                                                okText="Có"
+                                                                onConfirm={handleLogout}
+                                                            >
+                                                                <Button className="w-100 btn-primary">Đăng xuất</Button>
+                                                            </Popconfirm>
+                                                        </Form.Item>
+                                                    </div>
                                                 </div>
-                                                <div className="col-md-2 mt-3">
-                                                    <Form.Item label="Quận/huyện" name="district">
+                                                <div className="row">
+                                                    <div className="col-md-4 mt-3">
+                                                        <Form.Item label="Thành phố/tỉnh" name="city">
                                                             <Select
-                                                                placeholder="Chọn quận/huyện"
+                                                                placeholder="Chọn thành phố/tỉnh"
                                                                 size="large"
                                                                 showSearch
                                                                 options={
-                                                                    districtList.map(data => {
+                                                                    cityList.map(data => {
                                                                         return {
                                                                             value: data.name,
                                                                             label: data.name,
@@ -493,56 +502,79 @@ export default function Account() {
                                                                     })
                                                                 }
                                                                 onChange={(value, obj) => {
-                                                                    setDistrict(value);
-                                                                    getWardsByDistrict(obj.code);
+                                                                    setCity(value);
+                                                                    getDistrictsByCity(obj.code);
                                                                 }}
-                                                                disabled={city || (user && user.city) ? false : true}
                                                             />
-                                                    </Form.Item>
+                                                        </Form.Item>
+                                                    </div>
+                                                    <div className="col-md-2 mt-3">
+                                                        <Form.Item label="Quận/huyện" name="district">
+                                                                <Select
+                                                                    placeholder="Chọn quận/huyện"
+                                                                    size="large"
+                                                                    showSearch
+                                                                    options={
+                                                                        districtList.map(data => {
+                                                                            return {
+                                                                                value: data.name,
+                                                                                label: data.name,
+                                                                                code: data.code
+                                                                            }
+                                                                        })
+                                                                    }
+                                                                    onChange={(value, obj) => {
+                                                                        setDistrict(value);
+                                                                        getWardsByDistrict(obj.code);
+                                                                    }}
+                                                                    disabled={city || (user && user.city) ? false : true}
+                                                                />
+                                                        </Form.Item>
+                                                    </div>
+                                                    <div className="col-md-2 mt-3">
+                                                        <Form.Item label="Phường/xã" name="ward">
+                                                                <Select
+                                                                    placeholder="Chọn phường/xã"
+                                                                    size="large"
+                                                                    showSearch
+                                                                    options={
+                                                                        wardList.map(data => {
+                                                                            return {
+                                                                                value: data.name,
+                                                                                label: data.name,
+                                                                                code: data.code
+                                                                            }
+                                                                        })
+                                                                    }
+                                                                    onChange={value => setWard(value)}
+                                                                    disabled={district || (user && user.district) ? false : true}
+                                                                />
+                                                        </Form.Item>
+                                                    </div>
+                                                    <div className="col-md-4 mt-3">
+                                                        <Form.Item label="Số nhà và tên đường" name="street">
+                                                                <Input
+                                                                    size="large"
+                                                                    placeholder="Số nhà và tên đường"
+                                                                    onChange={e => setStreet(e.target.value)}
+                                                                    disabled={ward || (user && user.ward) ? false : true}
+                                                                />
+                                                        </Form.Item>
+                                                    </div>
                                                 </div>
-                                                <div className="col-md-2 mt-3">
-                                                    <Form.Item label="Phường/xã" name="ward">
-                                                            <Select
-                                                                placeholder="Chọn phường/xã"
-                                                                size="large"
-                                                                showSearch
-                                                                options={
-                                                                    wardList.map(data => {
-                                                                        return {
-                                                                            value: data.name,
-                                                                            label: data.name,
-                                                                            code: data.code
-                                                                        }
-                                                                    })
-                                                                }
-                                                                onChange={value => setWard(value)}
-                                                                disabled={district || (user && user.district) ? false : true}
-                                                            />
-                                                    </Form.Item>
+                                                <div className="mt-3">
+                                                    <Button htmlType="submit" className="btn-primary px-4 me-2">LƯU THÔNG TIN</Button>
+                                                    <Button htmlType="reset" className="px-4">RESET</Button>
                                                 </div>
-                                                <div className="col-md-4 mt-3">
-                                                    <Form.Item label="Số nhà và tên đường" name="street">
-                                                            <Input
-                                                                size="large"
-                                                                placeholder="Số nhà và tên đường"
-                                                                onChange={e => setStreet(e.target.value)}
-                                                                disabled={ward || (user && user.ward) ? false : true}
-                                                            />
-                                                    </Form.Item>
-                                                </div>
-                                            </div>
-                                            <div className="mt-3">
-                                                <Button htmlType="submit" className="btn-primary px-4 me-2">LƯU THÔNG TIN</Button>
-                                                <Button htmlType="reset" className="px-4">RESET</Button>
-                                            </div>
-                                        </Form>
+                                            </Form>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </Spin>
         </AnimatedPage>
     );
 };
